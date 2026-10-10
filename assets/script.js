@@ -7,11 +7,49 @@ document.querySelectorAll("[data-year]").forEach((node) => {
   node.textContent = new Date().getFullYear();
 });
 
+const scrollProgress = document.createElement("div");
+scrollProgress.className = "scroll-progress";
+scrollProgress.setAttribute("aria-hidden", "true");
+document.body.append(scrollProgress);
+
+const ambientGraphics = document.createElement("div");
+ambientGraphics.className = "ambient-graphics";
+ambientGraphics.setAttribute("aria-hidden", "true");
+ambientGraphics.innerHTML = '<span class="ambient-orb ambient-orb-one"></span><span class="ambient-orb ambient-orb-two"></span><span class="ambient-line"></span><span class="pointer-reflection"></span>';
+document.body.prepend(ambientGraphics);
+
 const header = document.querySelector("[data-header]");
 const menuButton = document.querySelector(".menu-toggle");
 const navigation = document.querySelector(".primary-nav");
+const themeToggle = document.querySelector(".theme-toggle");
+const root = document.documentElement;
 
-const updateHeader = () => header?.classList.toggle("is-scrolled", window.scrollY > 24);
+const updateThemeLabel = () => {
+  const dark = root.dataset.theme === "dark";
+  themeToggle?.setAttribute("aria-label", `Switch to ${dark ? "light" : "dark"} mode`);
+  themeToggle?.setAttribute("title", `Switch to ${dark ? "light" : "dark"} mode`);
+};
+
+updateThemeLabel();
+themeToggle?.addEventListener("click", (event) => {
+  const nextTheme = root.dataset.theme === "dark" ? "light" : "dark";
+  root.style.setProperty("--theme-x", `${event.clientX}px`);
+  root.style.setProperty("--theme-y", `${event.clientY}px`);
+  const applyTheme = () => {
+    root.dataset.theme = nextTheme;
+    try { localStorage.setItem("rashi-theme", nextTheme); } catch { /* Theme remains active for this visit. */ }
+    updateThemeLabel();
+  };
+  if (document.startViewTransition && !reducedMotion) document.startViewTransition(applyTheme);
+  else applyTheme();
+});
+
+const updateHeader = () => {
+  header?.classList.toggle("is-scrolled", window.scrollY > 24);
+  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = scrollable > 0 ? Math.min(1, window.scrollY / scrollable) : 0;
+  scrollProgress.style.transform = `scaleX(${progress})`;
+};
 updateHeader();
 window.addEventListener("scroll", updateHeader, { passive: true });
 
@@ -66,6 +104,8 @@ if (!reducedMotion) {
       const rect = card.getBoundingClientRect();
       const rotateY = ((event.clientX - rect.left) / rect.width - .5) * 5;
       const rotateX = -((event.clientY - rect.top) / rect.height - .5) * 5;
+      card.style.setProperty("--shine-x", `${((event.clientX - rect.left) / rect.width) * 100}%`);
+      card.style.setProperty("--shine-y", `${((event.clientY - rect.top) / rect.height) * 100}%`);
       animate(card, { rotateX, rotateY, scale: 1.008 }, { duration: .28, ease: "easeOut" });
     });
     card.addEventListener("pointerleave", () => {
@@ -76,6 +116,49 @@ if (!reducedMotion) {
   document.querySelectorAll(".stack-card").forEach((card, index) => {
     animate(card, { y: [0, index % 2 ? -10 : 10, 0] }, { duration: 5 + index, repeat: Infinity, ease: "easeInOut" });
   });
+
+  animate(".ambient-orb-one", { x: [0, -35, 20, 0], y: [0, 28, -18, 0], scale: [1, 1.05, .97, 1] }, { duration: 18, repeat: Infinity, ease: "easeInOut" });
+  animate(".ambient-orb-two", { x: [0, 42, -15, 0], y: [0, -28, 22, 0], scale: [1, .95, 1.04, 1] }, { duration: 22, repeat: Infinity, ease: "easeInOut" });
+  animate(".ambient-line", { rotate: [-18, -12, -18], x: [-20, 25, -20], opacity: [.4, .8, .4] }, { duration: 12, repeat: Infinity, ease: "easeInOut" });
+  animate(".page-number", { y: [0, -12, 0], opacity: [.18, .27, .18] }, { duration: 5.5, repeat: Infinity, ease: "easeInOut" });
+
+  if (finePointer) {
+    const pointerReflection = document.querySelector(".pointer-reflection");
+    let pointerFrame = null;
+    window.addEventListener("pointermove", (event) => {
+      if (pointerFrame) cancelAnimationFrame(pointerFrame);
+      pointerFrame = requestAnimationFrame(() => {
+        pointerReflection.style.transform = `translate3d(${event.clientX - 220}px, ${event.clientY - 220}px, 0)`;
+      });
+    }, { passive: true });
+
+    document.querySelectorAll(".button, .circle-link").forEach((element) => {
+      element.addEventListener("pointermove", (event) => {
+        const rect = element.getBoundingClientRect();
+        const x = (event.clientX - rect.left - rect.width / 2) * .1;
+        const y = (event.clientY - rect.top - rect.height / 2) * .1;
+        animate(element, { x, y }, { duration: .22, ease: "easeOut" });
+      });
+      element.addEventListener("pointerleave", () => animate(element, { x: 0, y: 0 }, { duration: .45, type: spring, stiffness: 180, damping: 17 }));
+    });
+  }
+
+  const hero = document.querySelector(".hero");
+  if (hero) {
+    const particles = document.createElement("div");
+    particles.className = "hero-particles";
+    particles.setAttribute("aria-hidden", "true");
+    const particleCount = window.innerWidth < 640 ? 4 : 8;
+    for (let index = 0; index < particleCount; index += 1) {
+      const petal = document.createElement("span");
+      petal.className = "hero-petal";
+      petal.style.left = `${12 + (index * 83) % 82}%`;
+      petal.style.opacity = String(.35 + (index % 4) * .12);
+      particles.append(petal);
+      animate(petal, { y: ["-10vh", "112vh"], x: [0, index % 2 ? 80 : -65, 20], rotate: [0, 220 + index * 30], scale: [.7, 1.1, .8] }, { duration: 10 + index * 1.2, delay: -(index * 1.7), repeat: Infinity, ease: "linear" });
+    }
+    hero.append(particles);
+  }
 }
 
 const disciplineContent = {
