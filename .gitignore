@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.dist/
+.vite/
+.DS_Store
+*.log
+
+# Original high-resolution photos are retained locally; optimized copies live in assets/media.
+assets/Images/
