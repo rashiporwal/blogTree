@@ -15,9 +15,31 @@
           <input type="hidden" name="_subject" value="New message from Rashi's website" /><input type="hidden" name="_template" value="table" /><input type="hidden" name="_captcha" value="false" /><input type="text" name="_honey" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true" />
           <div class="form-row"><div class="field"><label for="name">Your name</label><input id="name" name="name" type="text" autocomplete="name" placeholder="How should I address you?" required /></div><div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required /></div></div>
           <div class="field"><label for="topic">What is this about?</label><select id="topic" name="topic" required><option value="" disabled selected>Select a topic</option><option>Project collaboration</option><option>Freelance opportunity</option><option>Open source</option><option>Speaking or community</option><option>Just saying hello</option></select></div>
-          <div class="field"><label for="message">Your message</label><textarea id="message" name="message" placeholder="Share the idea, context, timeline, or simply say hello…" required minlength="10"></textarea></div>
+          <div class="field"><div class="field-label-row"><label for="message">Your message</label><span class="message-count" data-message-count>0 / 1200</span></div><textarea id="message" name="message" placeholder="Share the idea, context, timeline, or simply say hello…" required minlength="10" maxlength="1200"></textarea></div>
           <div class="form-footer"><p class="form-note">Your message is delivered securely to Rashi’s inbox. No mailing list, no tracking.</p><button class="button button-solid" type="submit">Send message <span aria-hidden="true">↗</span></button></div>
         </form>
+      </section>
+
+      <section class="section collaboration-section" aria-labelledby="collaboration-title">
+        <div class="shell">
+          <div class="section-kicker reveal"><span>Working together</span><i></i><span>01</span></div>
+          <div class="collaboration-heading reveal"><p class="overline">Simple, visible, collaborative</p><h2 id="collaboration-title">A clear path from<br /><em>hello to shipped.</em></h2><p>Good projects rarely begin with every answer. They begin with shared context, honest constraints and a small next step everyone understands.</p></div>
+          <ol class="process-list">
+            <li class="process-card reveal"><span>01</span><div><h3>Understand the problem</h3><p>We clarify the audience, desired outcome, current constraints and what success should feel like—not just what the page should contain.</p></div></li>
+            <li class="process-card reveal"><span>02</span><div><h3>Shape the experience</h3><p>I turn the direction into a focused structure, responsive interface and technical plan, sharing progress early enough to improve it together.</p></div></li>
+            <li class="process-card reveal"><span>03</span><div><h3>Build, test and hand over</h3><p>The final pass covers performance, accessibility, responsive behaviour and clear documentation so the work stays useful after launch.</p></div></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section shell faq-section" aria-labelledby="faq-title">
+        <div class="faq-intro reveal"><p class="overline">Before you write</p><h2 id="faq-title">A few useful<br /><em>answers.</em></h2><p>If your question is not here, send it anyway. A short, honest message is more useful than a perfectly written brief.</p></div>
+        <div class="faq-list">
+          <details class="faq-item reveal"><summary>What kind of work can we discuss?<span aria-hidden="true">+</span></summary><p>Responsive web experiences, MERN stack projects, interface improvement, developer documentation, open-source collaboration and community-focused initiatives are all welcome starting points.</p></details>
+          <details class="faq-item reveal"><summary>Do I need a complete project brief?<span aria-hidden="true">+</span></summary><p>No. Share the problem, who it affects, and any deadline or constraint you already know. We can turn that context into a clearer scope together.</p></details>
+          <details class="faq-item reveal"><summary>Can I reach out for a community or speaking collaboration?<span aria-hidden="true">+</span></summary><p>Yes. Include the event format, expected audience, proposed topic and tentative date so I can understand where I may contribute best.</p></details>
+          <details class="faq-item reveal"><summary>Where will the contact form message go?<span aria-hidden="true">+</span></summary><p>Messages are delivered to porwalvaishnav9@gmail.com. Your address is only used to reply to your enquiry.</p></details>
+        </div>
       </section>
     </main>
     <footer class="site-footer"><div class="shell footer-inner"><a class="brand brand-footer" href="./index.html"><span class="brand-mark">R</span><span class="brand-copy"><strong>Rashi Porwal</strong><small>field notes</small></span></a><p>Designed with calm. Built with curiosity.</p><div class="footer-links"><a href="https://www.linkedin.com/in/rashiporwal/" target="_blank" rel="noopener">LinkedIn</a><a href="https://hashnode.com/@Rashiporwal" target="_blank" rel="noopener">Hashnode</a><a href="mailto:porwalvaishnav9@gmail.com">Email</a></div><p class="copyright">© <span data-year></span> Rashi Porwal</p></div></footer>

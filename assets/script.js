@@ -78,6 +78,113 @@ if (!reducedMotion) {
   });
 }
 
+const disciplineContent = {
+  frontend: {
+    index: "01",
+    label: "Frontend experiences",
+    title: "Interfaces that feel clear before they feel clever.",
+    copy: "I build responsive, accessible interfaces where motion supports the story, performance stays visible, and every screen has a reason to exist.",
+    points: ["Responsive UI systems", "Accessible interaction design", "Performance-aware animation"]
+  },
+  fullstack: {
+    index: "02",
+    label: "Full-stack builds",
+    title: "Useful products need calm systems behind them.",
+    copy: "From interface state to API and data flow, I enjoy connecting the layers of a MERN application so the experience stays predictable for users and maintainable for developers.",
+    points: ["MERN application structure", "API and data flow", "Maintainable components"]
+  },
+  community: {
+    index: "03",
+    label: "Community & writing",
+    title: "Knowledge becomes stronger when it can travel.",
+    copy: "Leadership and technical writing taught me to explain ideas without hiding the difficult parts. I create documentation and learning spaces that help people take their next step.",
+    points: ["Technical documentation", "Developer communities", "Learning in public"]
+  }
+};
+
+const disciplinePanel = document.querySelector(".discipline-panel");
+document.querySelectorAll("[data-discipline]").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const content = disciplineContent[tab.dataset.discipline];
+    if (!content || !disciplinePanel) return;
+
+    document.querySelectorAll("[data-discipline]").forEach((item) => {
+      const active = item === tab;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-selected", String(active));
+    });
+
+    disciplinePanel.querySelector("[data-discipline-index]").textContent = content.index;
+    disciplinePanel.querySelector("[data-discipline-label]").textContent = content.label;
+    disciplinePanel.querySelector("[data-discipline-title]").textContent = content.title;
+    disciplinePanel.querySelector("[data-discipline-copy]").textContent = content.copy;
+    disciplinePanel.querySelector("[data-discipline-points]").innerHTML = content.points.map((point) => `<li>${point}</li>`).join("");
+    if (!reducedMotion) animate(disciplinePanel, { opacity: [0, 1], y: [12, 0] }, { duration: .42, ease: [0.22, 1, 0.36, 1] });
+  });
+});
+
+const journalCards = [...document.querySelectorAll("[data-journal-card]")];
+const journalSearch = document.querySelector("[data-journal-search]");
+const journalFilters = [...document.querySelectorAll("[data-journal-filter]")];
+const journalCount = document.querySelector("[data-journal-count]");
+const journalEmpty = document.querySelector("[data-journal-empty]");
+let activeJournalFilter = "all";
+let savedArticles = new Set();
+
+try {
+  savedArticles = new Set(JSON.parse(localStorage.getItem("rashi-saved-articles") || "[]"));
+} catch {
+  savedArticles = new Set();
+}
+
+const updateBookmarkButtons = () => {
+  document.querySelectorAll("[data-bookmark]").forEach((button) => {
+    const saved = savedArticles.has(button.dataset.bookmark);
+    button.setAttribute("aria-pressed", String(saved));
+    button.innerHTML = `<span aria-hidden="true">${saved ? "◆" : "◇"}</span> ${saved ? "Saved" : "Save"}`;
+  });
+};
+
+const applyJournalFilters = () => {
+  const query = journalSearch?.value.trim().toLowerCase() || "";
+  let visible = 0;
+  journalCards.forEach((card) => {
+    const matchesSearch = !query || card.dataset.searchText.includes(query);
+    const matchesFilter = activeJournalFilter === "all"
+      || card.dataset.category === activeJournalFilter
+      || (activeJournalFilter === "saved" && savedArticles.has(card.dataset.articleId));
+    const show = matchesSearch && matchesFilter;
+    card.classList.toggle("is-filtered-out", !show);
+    if (show) visible += 1;
+  });
+  if (journalCount) journalCount.textContent = `Showing ${visible} note${visible === 1 ? "" : "s"}`;
+  if (journalEmpty) journalEmpty.hidden = visible !== 0;
+};
+
+updateBookmarkButtons();
+journalSearch?.addEventListener("input", applyJournalFilters);
+journalFilters.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeJournalFilter = button.dataset.journalFilter;
+    journalFilters.forEach((item) => {
+      const active = item === button;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+    applyJournalFilters();
+  });
+});
+document.querySelectorAll("[data-bookmark]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const id = button.dataset.bookmark;
+    if (savedArticles.has(id)) savedArticles.delete(id);
+    else savedArticles.add(id);
+    try { localStorage.setItem("rashi-saved-articles", JSON.stringify([...savedArticles])); } catch { /* Bookmarks remain available for this visit. */ }
+    updateBookmarkButtons();
+    if (activeJournalFilter === "saved") applyJournalFilters();
+  });
+});
+
 const filterButtons = document.querySelectorAll("[data-filter]");
 const galleryItems = document.querySelectorAll(".gallery-item");
 const galleryCount = document.querySelector(".gallery-count");
@@ -97,7 +204,7 @@ filterButtons.forEach((button) => {
       item.classList.toggle("is-hidden", !show);
       if (show) visible += 1;
     });
-    if (galleryCount) galleryCount.textContent = `${visible} photograph${visible === 1 ? "" : "s"}`;
+    if (galleryCount) galleryCount.textContent = `${visible} photograph${visible === 1 ? "" : "s"} · drag to arrange`;
 
     if (!reducedMotion) {
       animate(document.querySelectorAll(".gallery-item:not(.is-hidden)"), { opacity: [0, 1], scale: [.97, 1] }, { duration: .4, delay: stagger(.045) });
@@ -109,9 +216,11 @@ const lightbox = document.querySelector("#lightbox");
 const lightboxImage = lightbox?.querySelector("img");
 const lightboxCaption = lightbox?.querySelector("p");
 const lightboxClose = lightbox?.querySelector(".lightbox-close");
+let galleryDragJustEnded = false;
 
 galleryItems.forEach((item) => {
   item.addEventListener("click", () => {
+    if (galleryDragJustEnded) return;
     if (!lightbox || !lightboxImage || !lightboxCaption) return;
     lightboxImage.src = item.dataset.full;
     lightboxImage.alt = item.querySelector("img")?.alt || "Gallery photograph";
@@ -123,6 +232,126 @@ galleryItems.forEach((item) => {
 lightboxClose?.addEventListener("click", () => lightbox.close());
 lightbox?.addEventListener("click", (event) => {
   if (event.target === lightbox) lightbox.close();
+});
+
+const galleryGrid = document.querySelector(".gallery-grid");
+const defaultGalleryOrder = [...galleryItems].map((item) => item.dataset.galleryId);
+
+const saveGalleryOrder = () => {
+  if (!galleryGrid) return;
+  const order = [...galleryGrid.querySelectorAll(".gallery-item")].map((item) => item.dataset.galleryId);
+  try { localStorage.setItem("rashi-gallery-order", JSON.stringify(order)); } catch { /* Reordering still works for this visit. */ }
+};
+
+const restoreGalleryOrder = () => {
+  if (!galleryGrid) return;
+  try {
+    const order = JSON.parse(localStorage.getItem("rashi-gallery-order") || "[]");
+    if (!Array.isArray(order)) return;
+    order.forEach((id) => {
+      const item = galleryGrid.querySelector(`[data-gallery-id="${id}"]`);
+      if (item) galleryGrid.append(item);
+    });
+  } catch {
+    localStorage.removeItem("rashi-gallery-order");
+  }
+};
+
+const animateGalleryReflow = (before) => {
+  if (reducedMotion || !galleryGrid) return;
+  galleryGrid.querySelectorAll(".gallery-item:not(.is-hidden)").forEach((item) => {
+    const previous = before.get(item);
+    if (!previous) return;
+    const next = item.getBoundingClientRect();
+    const x = previous.left - next.left;
+    const y = previous.top - next.top;
+    if (x || y) animate(item, { x: [x, 0], y: [y, 0] }, { duration: .35, ease: [0.22, 1, 0.36, 1] });
+  });
+};
+
+restoreGalleryOrder();
+
+if (galleryGrid) {
+  let draggedGalleryItem = null;
+  let dragHandle = null;
+  let dragPointerId = null;
+  let dragStart = { x: 0, y: 0 };
+  let galleryDragging = false;
+
+  galleryItems.forEach((item) => {
+    const handle = item.querySelector(".drag-handle");
+    handle?.addEventListener("click", (event) => event.stopPropagation());
+    handle?.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      draggedGalleryItem = item;
+      dragHandle = handle;
+      dragPointerId = event.pointerId;
+      dragStart = { x: event.clientX, y: event.clientY };
+      handle.setPointerCapture(event.pointerId);
+    });
+
+    item.addEventListener("keydown", (event) => {
+      if (!event.shiftKey || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+      event.preventDefault();
+      const before = new Map([...galleryGrid.querySelectorAll(".gallery-item:not(.is-hidden)")].map((node) => [node, node.getBoundingClientRect()]));
+      const moveBackward = event.key === "ArrowLeft" || event.key === "ArrowUp";
+      const sibling = moveBackward ? item.previousElementSibling : item.nextElementSibling;
+      if (!sibling) return;
+      if (moveBackward) galleryGrid.insertBefore(item, sibling);
+      else galleryGrid.insertBefore(sibling, item);
+      animateGalleryReflow(before);
+      saveGalleryOrder();
+      item.focus();
+    });
+  });
+
+  window.addEventListener("pointermove", (event) => {
+    if (!draggedGalleryItem || event.pointerId !== dragPointerId) return;
+    const distance = Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y);
+    if (!galleryDragging && distance < 8) return;
+    galleryDragging = true;
+    draggedGalleryItem.classList.add("is-dragging");
+
+    const hovered = document.elementFromPoint(event.clientX, event.clientY)?.closest(".gallery-item:not(.is-hidden)");
+    galleryItems.forEach((item) => item.classList.toggle("is-drag-over", item === hovered && item !== draggedGalleryItem));
+    if (!hovered || hovered === draggedGalleryItem) return;
+
+    const before = new Map([...galleryGrid.querySelectorAll(".gallery-item:not(.is-hidden)")].map((node) => [node, node.getBoundingClientRect()]));
+    const rect = hovered.getBoundingClientRect();
+    const insertAfter = event.clientY > rect.top + rect.height / 2 || (Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height * .25 && event.clientX > rect.left + rect.width / 2);
+    galleryGrid.insertBefore(draggedGalleryItem, insertAfter ? hovered.nextElementSibling : hovered);
+    animateGalleryReflow(before);
+  }, { passive: true });
+
+  const endGalleryDrag = (event) => {
+    if (!draggedGalleryItem || event.pointerId !== dragPointerId) return;
+    if (dragHandle?.hasPointerCapture(dragPointerId)) dragHandle.releasePointerCapture(dragPointerId);
+    draggedGalleryItem.classList.remove("is-dragging");
+    galleryItems.forEach((item) => item.classList.remove("is-drag-over"));
+    if (galleryDragging) {
+      saveGalleryOrder();
+      galleryDragJustEnded = true;
+      window.setTimeout(() => { galleryDragJustEnded = false; }, 220);
+    }
+    draggedGalleryItem = null;
+    dragHandle = null;
+    dragPointerId = null;
+    galleryDragging = false;
+  };
+  window.addEventListener("pointerup", endGalleryDrag);
+  window.addEventListener("pointercancel", endGalleryDrag);
+}
+
+document.querySelector("[data-gallery-reset]")?.addEventListener("click", () => {
+  if (!galleryGrid) return;
+  const before = new Map([...galleryGrid.querySelectorAll(".gallery-item:not(.is-hidden)")].map((node) => [node, node.getBoundingClientRect()]));
+  defaultGalleryOrder.forEach((id) => {
+    const item = galleryGrid.querySelector(`[data-gallery-id="${id}"]`);
+    if (item) galleryGrid.append(item);
+  });
+  try { localStorage.removeItem("rashi-gallery-order"); } catch { /* Nothing else to reset. */ }
+  animateGalleryReflow(before);
 });
 
 const spirit = document.querySelector("#forest-spirit");
@@ -173,6 +402,13 @@ if (spirit && !reducedMotion) {
 }
 
 const contactForm = document.querySelector(".contact-form");
+const messageField = document.querySelector("#message");
+const messageCount = document.querySelector("[data-message-count]");
+const updateMessageCount = () => {
+  if (messageField && messageCount) messageCount.textContent = `${messageField.value.length} / ${messageField.maxLength}`;
+};
+messageField?.addEventListener("input", updateMessageCount);
+updateMessageCount();
 contactForm?.addEventListener("submit", () => {
   const submit = contactForm.querySelector("button[type='submit']");
   if (submit) {
