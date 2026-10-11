@@ -1,7 +1,44 @@
-import { animate, inView, stagger, spring } from "motion";
+import { animate, inView, scroll, stagger, spring } from "motion";
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const finePointer = window.matchMedia("(pointer: fine)").matches;
+
+const pageTransition = document.createElement("div");
+pageTransition.className = "page-transition";
+pageTransition.setAttribute("aria-hidden", "true");
+pageTransition.innerHTML = '<span class="page-transition-panel"></span><span class="page-transition-panel"></span><span class="page-transition-panel"></span>';
+document.body.append(pageTransition);
+
+const transitionPanels = [...pageTransition.children];
+if (!reducedMotion) {
+  animate(transitionPanels, { scaleY: [1, 0] }, {
+    duration: .74,
+    delay: stagger(.055),
+    ease: [0.76, 0, 0.24, 1]
+  });
+}
+
+document.querySelectorAll("a[href]").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    if (reducedMotion || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (link.target === "_blank" || link.hasAttribute("download")) return;
+
+    const destination = new URL(link.href, window.location.href);
+    const current = new URL(window.location.href);
+    const samePageAnchor = destination.pathname === current.pathname && destination.search === current.search && destination.hash;
+    if (destination.origin !== current.origin || samePageAnchor || !/\.html$/i.test(destination.pathname)) return;
+
+    event.preventDefault();
+    document.body.classList.add("is-transitioning");
+    transitionPanels.forEach((panel) => { panel.style.transformOrigin = "bottom"; });
+    const controls = animate(transitionPanels, { scaleY: [0, 1] }, {
+      duration: .56,
+      delay: stagger(.045),
+      ease: [0.76, 0, 0.24, 1]
+    });
+    controls.finished.then(() => window.location.assign(destination.href));
+  });
+});
 
 document.querySelectorAll("[data-year]").forEach((node) => {
   node.textContent = new Date().getFullYear();
@@ -17,6 +54,35 @@ ambientGraphics.className = "ambient-graphics";
 ambientGraphics.setAttribute("aria-hidden", "true");
 ambientGraphics.innerHTML = '<span class="ambient-orb ambient-orb-one"></span><span class="ambient-orb ambient-orb-two"></span><span class="ambient-line"></span><span class="pointer-reflection"></span>';
 document.body.prepend(ambientGraphics);
+
+const motionSurfaces = [...document.querySelectorAll([
+  ".glass-card",
+  ".article-card",
+  ".contact-form",
+  ".journal-tools",
+  ".bridge-card",
+  ".process-card",
+  ".source-note",
+  ".discipline-panel",
+  ".gallery-controls"
+].join(","))];
+
+motionSurfaces.forEach((surface) => {
+  surface.classList.add("motion-surface");
+  const glow = document.createElement("span");
+  glow.className = "surface-glow";
+  glow.setAttribute("aria-hidden", "true");
+  surface.append(glow);
+});
+
+const motionSections = [...document.querySelectorAll("main > section.section:not(.gallery-collection)")];
+motionSections.forEach((section, index) => {
+  section.classList.add("motion-section");
+  const mark = document.createElement("span");
+  mark.className = `motion-section-mark${index % 2 ? " is-left" : ""}`;
+  mark.setAttribute("aria-hidden", "true");
+  section.append(mark);
+});
 
 const header = document.querySelector("[data-header]");
 const menuButton = document.querySelector(".menu-toggle");
@@ -78,16 +144,43 @@ document.addEventListener("click", (event) => {
 if (!reducedMotion) {
   const heroElements = document.querySelectorAll(".hero-reveal");
   if (heroElements.length) {
-    animate(heroElements, { opacity: [0, 1], y: [28, 0] }, {
-      duration: .85,
+    animate(heroElements, { opacity: [0, 1], y: [42, 0], scale: [.97, 1], filter: ["blur(10px)", "blur(0px)"] }, {
+      duration: 1,
       delay: stagger(.09, { startDelay: .16 }),
       ease: [0.22, 1, 0.36, 1]
     });
   }
 
   inView(".reveal", (element) => {
-    animate(element, { opacity: 1, y: 0 }, { duration: .72, ease: [0.22, 1, 0.36, 1] });
+    animate(element, { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }, { duration: .84, ease: [0.22, 1, 0.36, 1] });
   }, { margin: "0px 0px -8% 0px", amount: .12 });
+
+  motionSections.forEach((section, index) => {
+    const mark = section.querySelector(".motion-section-mark");
+    scroll((progress) => {
+      const direction = index % 2 ? -1 : 1;
+      mark.style.transform = `translate3d(${direction * (progress - .5) * 46}px, ${(progress - .5) * 72}px, 0) rotate(${progress * 150}deg)`;
+      mark.style.opacity = String(.12 + Math.sin(progress * Math.PI) * .42);
+    }, { target: section, offset: ["start end", "end start"] });
+  });
+
+  const heroContent = document.querySelector(".hero-content");
+  const heroSection = document.querySelector(".hero");
+  if (heroContent && heroSection) {
+    scroll((progress) => {
+      heroContent.style.transform = `translate3d(0, ${progress * 52}px, 0)`;
+      heroContent.style.opacity = String(1 - progress * .46);
+    }, { target: heroSection, offset: ["start start", "end start"] });
+  }
+
+  const pageHeroInner = document.querySelector(".page-hero-inner");
+  const pageHero = document.querySelector(".page-hero");
+  if (pageHeroInner && pageHero) {
+    scroll((progress) => {
+      pageHeroInner.style.transform = `translate3d(0, ${progress * 44}px, 0)`;
+      pageHeroInner.style.opacity = String(1 - progress * .38);
+    }, { target: pageHero, offset: ["start start", "end start"] });
+  }
 
   const heroMedia = document.querySelector(".hero-media");
   if (heroMedia && finePointer) {
@@ -132,7 +225,7 @@ if (!reducedMotion) {
       });
     }, { passive: true });
 
-    document.querySelectorAll(".button, .circle-link").forEach((element) => {
+    document.querySelectorAll(".button, .circle-link, .social-list a, .gallery-arrow, .theme-toggle").forEach((element) => {
       element.addEventListener("pointermove", (event) => {
         const rect = element.getBoundingClientRect();
         const x = (event.clientX - rect.left - rect.width / 2) * .1;
@@ -140,6 +233,18 @@ if (!reducedMotion) {
         animate(element, { x, y }, { duration: .22, ease: "easeOut" });
       });
       element.addEventListener("pointerleave", () => animate(element, { x: 0, y: 0 }, { duration: .45, type: spring, stiffness: 180, damping: 17 }));
+    });
+
+    motionSurfaces.forEach((surface) => {
+      surface.addEventListener("pointermove", (event) => {
+        const rect = surface.getBoundingClientRect();
+        surface.style.setProperty("--surface-x", `${((event.clientX - rect.left) / rect.width) * 100}%`);
+        surface.style.setProperty("--surface-y", `${((event.clientY - rect.top) / rect.height) * 100}%`);
+      });
+      if (!surface.classList.contains("tilt-card")) {
+        surface.addEventListener("pointerenter", () => animate(surface, { y: -6, scale: 1.006 }, { duration: .32, ease: "easeOut" }));
+        surface.addEventListener("pointerleave", () => animate(surface, { y: 0, scale: 1 }, { duration: .5, type: spring, stiffness: 190, damping: 20 }));
+      }
     });
   }
 
@@ -160,6 +265,14 @@ if (!reducedMotion) {
     hero.append(particles);
   }
 }
+
+document.querySelectorAll(".faq-item").forEach((item) => {
+  item.addEventListener("toggle", () => {
+    if (!item.open || reducedMotion) return;
+    const answer = item.querySelector("p");
+    if (answer) animate(answer, { opacity: [0, 1], y: [-9, 0] }, { duration: .38, ease: [0.22, 1, 0.36, 1] });
+  });
+});
 
 const disciplineContent = {
   frontend: {
