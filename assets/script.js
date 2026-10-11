@@ -289,6 +289,9 @@ filterButtons.forEach((button) => {
     });
     if (galleryCount) galleryCount.textContent = `${visible} photograph${visible === 1 ? "" : "s"} · drag to arrange`;
 
+    galleryGrid?.scrollTo({ left: 0, behavior: reducedMotion ? "auto" : "smooth" });
+    window.requestAnimationFrame(updateGalleryRail);
+
     if (!reducedMotion) {
       animate(document.querySelectorAll(".gallery-item:not(.is-hidden)"), { opacity: [0, 1], scale: [.97, 1] }, { duration: .4, delay: stagger(.045) });
     }
@@ -308,6 +311,7 @@ galleryItems.forEach((item) => {
     lightboxImage.src = item.dataset.full;
     lightboxImage.alt = item.querySelector("img")?.alt || "Gallery photograph";
     lightboxCaption.textContent = item.dataset.caption || "";
+    lightbox.classList.toggle("is-rotated", item.dataset.rotate === "left");
     lightbox.showModal();
   });
 });
@@ -319,6 +323,76 @@ lightbox?.addEventListener("click", (event) => {
 
 const galleryGrid = document.querySelector(".gallery-grid");
 const defaultGalleryOrder = [...galleryItems].map((item) => item.dataset.galleryId);
+const galleryProgress = document.querySelector(".gallery-progress span");
+const galleryPrevious = document.querySelector("[data-gallery-prev]");
+const galleryNext = document.querySelector("[data-gallery-next]");
+const galleryOrbit = document.querySelector(".gallery-graphic-orbit");
+const galleryGridGraphic = document.querySelector(".gallery-graphic-grid");
+const galleryDot = document.querySelector(".gallery-graphic-dot");
+
+if (galleryGrid && !reducedMotion) {
+  if (galleryOrbit) animate(galleryOrbit, { rotate: [0, 360] }, { duration: 34, repeat: Infinity, ease: "linear" });
+  if (galleryGridGraphic) animate(galleryGridGraphic, { x: [0, 14, 0], y: [0, -9, 0], rotate: [-8, -6, -8], opacity: [.24, .44, .24] }, { duration: 9, repeat: Infinity, ease: "easeInOut" });
+  if (galleryDot) animate(galleryDot, { y: [0, -15, 0], scale: [1, 1.08, 1], rotate: [0, 12, 0] }, { duration: 4.8, repeat: Infinity, ease: "easeInOut" });
+}
+
+if (galleryGrid && finePointer) {
+  galleryItems.forEach((item) => {
+    item.addEventListener("pointermove", (event) => {
+      const rect = item.getBoundingClientRect();
+      item.style.setProperty("--glow-x", `${((event.clientX - rect.left) / rect.width) * 100}%`);
+      item.style.setProperty("--glow-y", `${((event.clientY - rect.top) / rect.height) * 100}%`);
+    });
+    item.addEventListener("pointerleave", () => {
+      item.style.setProperty("--glow-x", "50%");
+      item.style.setProperty("--glow-y", "20%");
+    });
+  });
+}
+
+const updateGalleryRail = () => {
+  if (!galleryGrid) return;
+  const maxScroll = Math.max(1, galleryGrid.scrollWidth - galleryGrid.clientWidth);
+  const progress = Math.min(1, Math.max(0, galleryGrid.scrollLeft / maxScroll));
+  if (galleryProgress) galleryProgress.style.transform = `scaleX(${Math.max(.08, progress)})`;
+  if (galleryPrevious) galleryPrevious.disabled = galleryGrid.scrollLeft <= 2;
+  if (galleryNext) galleryNext.disabled = galleryGrid.scrollLeft >= maxScroll - 2 || galleryGrid.scrollWidth <= galleryGrid.clientWidth + 2;
+
+  const gridCenter = galleryGrid.getBoundingClientRect().left + galleryGrid.clientWidth / 2;
+  galleryGrid.querySelectorAll(".gallery-item:not(.is-hidden)").forEach((item) => {
+    const rect = item.getBoundingClientRect();
+    const distance = Math.max(-1, Math.min(1, (rect.left + rect.width / 2 - gridCenter) / galleryGrid.clientWidth));
+    item.style.setProperty("--gallery-depth", String(1 - Math.abs(distance) * .055));
+    item.style.setProperty("--gallery-shift", `${distance * -18}px`);
+    item.style.setProperty("--gallery-tilt", `${distance * -2.4}deg`);
+  });
+};
+
+const moveGallery = (direction, trigger) => {
+  if (!galleryGrid) return;
+  const visibleCard = galleryGrid.querySelector(".gallery-item:not(.is-hidden)");
+  const galleryStyles = window.getComputedStyle(galleryGrid);
+  const gap = Number.parseFloat(galleryStyles.columnGap || galleryStyles.gap) || 0;
+  const distance = visibleCard ? visibleCard.getBoundingClientRect().width + gap : galleryGrid.clientWidth * .7;
+  galleryGrid.scrollBy({ left: distance * direction, behavior: reducedMotion ? "auto" : "smooth" });
+  if (!reducedMotion && trigger) animate(trigger, { scale: [1, .84, 1], rotate: [0, direction * 7, 0] }, { duration: .36 });
+};
+
+galleryPrevious?.addEventListener("click", () => moveGallery(-1, galleryPrevious));
+galleryNext?.addEventListener("click", () => moveGallery(1, galleryNext));
+
+if (galleryGrid) {
+  let galleryFrame = 0;
+  galleryGrid.addEventListener("scroll", () => {
+    if (galleryFrame) return;
+    galleryFrame = window.requestAnimationFrame(() => {
+      updateGalleryRail();
+      galleryFrame = 0;
+    });
+  }, { passive: true });
+  window.addEventListener("resize", updateGalleryRail, { passive: true });
+  window.requestAnimationFrame(updateGalleryRail);
+}
 
 const saveGalleryOrder = () => {
   if (!galleryGrid) return;
@@ -341,7 +415,9 @@ const restoreGalleryOrder = () => {
 };
 
 const animateGalleryReflow = (before) => {
-  if (reducedMotion || !galleryGrid) return;
+  if (!galleryGrid) return;
+  window.requestAnimationFrame(updateGalleryRail);
+  if (reducedMotion) return;
   galleryGrid.querySelectorAll(".gallery-item:not(.is-hidden)").forEach((item) => {
     const previous = before.get(item);
     if (!previous) return;
@@ -402,7 +478,7 @@ if (galleryGrid) {
 
     const before = new Map([...galleryGrid.querySelectorAll(".gallery-item:not(.is-hidden)")].map((node) => [node, node.getBoundingClientRect()]));
     const rect = hovered.getBoundingClientRect();
-    const insertAfter = event.clientY > rect.top + rect.height / 2 || (Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height * .25 && event.clientX > rect.left + rect.width / 2);
+    const insertAfter = event.clientX > rect.left + rect.width / 2;
     galleryGrid.insertBefore(draggedGalleryItem, insertAfter ? hovered.nextElementSibling : hovered);
     animateGalleryReflow(before);
   }, { passive: true });
